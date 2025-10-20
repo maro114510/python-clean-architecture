@@ -9,6 +9,8 @@
 # *.mp4
 # *.json
 
+### Python ###
+**/__pycache__/**
 
 ### macOS ###
 # General
