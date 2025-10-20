@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends
-from dependency_injector.wiring import inject, Provide
-from app.schema.item import ItemResponse, ItemRequest
-from app.usecase.item import ItemUsecase
+from dependency_injector.wiring import Provide, inject
+from fastapi import APIRouter, Depends, status
+
 from app.container import Container
+from app.model.item import ItemModel
+from app.schema.item import ItemRequest, ItemResponse
+from app.usecase.item import ItemUsecase
 
 router = APIRouter()
 
@@ -29,19 +31,28 @@ async def get_item(
         raise e
 
 
-@router.post("/item", response_model=None, status_code=201)
+@router.post(
+    "/item",
+    response_model=None,
+    status_code=status.HTTP_201_CREATED,
+)
 @inject
 async def create_item(
     item: ItemRequest, usecase: ItemUsecase = Depends(Provide[Container.item_usecase])
 ):
     try:
-        await usecase.create_item(item)
+        domain_item = ItemModel(**item.model_dump())
+        await usecase.create_item(domain_item)
         return None
     except Exception as e:
         raise e
 
 
-@router.put("/item/{item_id}", response_model=None, status_code=204)
+@router.put(
+    "/item/{item_id}",
+    response_model=None,
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 @inject
 async def update_item(
     item_id: int,
@@ -49,13 +60,18 @@ async def update_item(
     usecase: ItemUsecase = Depends(Provide[Container.item_usecase]),
 ):
     try:
-        await usecase.update_item(item_id, item)
+        domain_item = ItemModel(id=item_id, **item.model_dump())
+        await usecase.update_item(item_id, domain_item)
         return None
     except Exception as e:
         raise e
 
 
-@router.delete("/item/{item_id}", response_model=None, status_code=204)
+@router.delete(
+    "/item/{item_id}",
+    response_model=None,
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 @inject
 async def delete_item(
     item_id: int, usecase: ItemUsecase = Depends(Provide[Container.item_usecase])

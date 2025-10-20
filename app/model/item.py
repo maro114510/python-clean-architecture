@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -7,4 +9,4 @@ class ItemBase(BaseModel):
 
 
 class ItemModel(ItemBase):
-    id: int
+    id: Optional[int] = None

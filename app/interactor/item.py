@@ -1,8 +1,9 @@
-from app.usecase.item import ItemUsecase
-from app.repository.item import ItemRepository
+from typing import List, Optional
+
 from app.datastore.database.transaction_manager import TransactionManager
-from typing import List
 from app.model.item import ItemModel
+from app.repository.item import ItemRepository
+from app.usecase.item import ItemUsecase
 
 
 class ItemInteractor(ItemUsecase):
@@ -21,7 +22,7 @@ class ItemInteractor(ItemUsecase):
             await self.transaction_manager.rollback()
             raise
 
-    async def get_item(self, item_id: int) -> ItemModel:
+    async def get_item(self, item_id: int) -> Optional[ItemModel]:
         """Get item by ID"""
         try:
             await self.transaction_manager.begin()

@@ -11,15 +11,20 @@ import pytest
 from dependency_injector import providers
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from typing import TypedDict
 
 from app.container import Container
 from app.interactor.item import ItemInteractor
 from app.model.item import ItemModel
 from app.router.item import router
-from app.schema.item import ItemRequest
 
 
 pytestmark = pytest.mark.unit
+
+
+class _ItemPayload(TypedDict):
+    name: str
+    price: float
 
 
 @pytest.fixture
@@ -98,22 +103,36 @@ class TestGetItem:
 
 class TestCreateItem:
     def test_create_item_success(self, client, mock_usecase):
-        payload = {"name": "Created", "price": 123.45}
+        payload: _ItemPayload = {"name": "Created", "price": 123.45}
 
         response = client.post("/item", json=payload)
 
         assert response.status_code == HTTPStatus.CREATED
-        mock_usecase.create_item.assert_awaited_once_with(ItemRequest(**payload))
+        mock_usecase.create_item.assert_awaited_once()
+        sent_item = mock_usecase.create_item.await_args.args[0]
+        assert isinstance(sent_item, ItemModel)
+        expected = ItemModel(name=payload["name"], price=payload["price"])
+        assert sent_item.model_dump() == expected.model_dump()
 
 
 class TestUpdateItem:
     def test_update_item_success(self, client, mock_usecase):
-        payload = {"name": "Updated", "price": 555.0}
+        payload: _ItemPayload = {"name": "Updated", "price": 555.0}
 
         response = client.put("/item/5", json=payload)
 
         assert response.status_code == HTTPStatus.NO_CONTENT
-        mock_usecase.update_item.assert_awaited_once_with(5, ItemRequest(**payload))
+        mock_usecase.update_item.assert_awaited_once()
+        args = mock_usecase.update_item.await_args.args
+        assert args[0] == 5
+        sent_item = args[1]
+        assert isinstance(sent_item, ItemModel)
+        expected = ItemModel(
+            id=5,
+            name=payload["name"],
+            price=payload["price"],
+        )
+        assert sent_item.model_dump() == expected.model_dump()
 
 
 class TestDeleteItem:
