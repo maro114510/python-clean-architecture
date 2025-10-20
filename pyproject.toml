@@ -7,4 +7,11 @@ requires-python = ">=3.14"
 dependencies = [
     "fastapi[standard]>=0.119.0",
     "humps>=0.2.2",
+    "dependency-injector>=4.41.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+    "httpx>=0.24.0",
 ]

@@ -1,6 +1,6 @@
 from typing import Optional
 from app.schema.core import BaseSchema
-from app.model.item import Item as ItemModel
+from app.model.item import ItemModel
 
 
 class ItemResponse(BaseSchema, ItemModel):

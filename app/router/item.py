@@ -1,32 +1,52 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from dependency_injector.wiring import inject, Provide
 from app.schema.item import ItemResponse, ItemRequest
+from app.usecase.item import ItemUsecase
+from app.container import Container
 
 router = APIRouter()
 
 
 @router.get("/item", response_model=list[ItemResponse])
-def list_items():
-    return [
-        ItemResponse(id=1, name="Sample Item", price=100.0),
-        ItemResponse(id=2, name="Another Item", price=150.0),
-    ]
+@inject
+def list_items(usecase: ItemUsecase = Depends(Provide[Container.item_usecase])):
+    items = usecase.get_items()
+    return items
 
 
 @router.get("/item/{item_id}", response_model=ItemResponse)
-def get_item(item_id: int):
-    return ItemResponse(id=item_id, name="Sample Item", price=100.0)
+@inject
+def get_item(
+    item_id: int, usecase: ItemUsecase = Depends(Provide[Container.item_usecase])
+):
+    item = usecase.get_item(item_id)
+    return item
 
 
 @router.post("/item", response_model=None, status_code=201)
-def create_item(item: ItemRequest):
-    return ItemResponse(id=1, name="Sample Item", price=100.0)
+@inject
+def create_item(
+    item: ItemRequest, usecase: ItemUsecase = Depends(Provide[Container.item_usecase])
+):
+    usecase.create_item(item)
+    return None
 
 
 @router.put("/item/{item_id}", response_model=None, status_code=204)
-def update_item(item_id: int, item: ItemRequest):
-    return ItemResponse(id=item_id, name="Sample Item", price=100.0)
+@inject
+def update_item(
+    item_id: int,
+    item: ItemRequest,
+    usecase: ItemUsecase = Depends(Provide[Container.item_usecase]),
+):
+    usecase.update_item(item_id, item)
+    return None
 
 
 @router.delete("/item/{item_id}", response_model=None, status_code=204)
-def delete_item(item_id: int):
-    return ItemResponse(id=item_id, name="Sample Item", price=100.0)
+@inject
+def delete_item(
+    item_id: int, usecase: ItemUsecase = Depends(Provide[Container.item_usecase])
+):
+    usecase.delete_item(item_id)
+    return None

@@ -12,19 +12,26 @@ tasks:
   run:
     desc: "Run the application"
     cmds:
-      -  uv run fastapi dev main.py
+      -  uv run python main.py
 
   fmt:
-    desc: "Format code using black"
+    desc: "Format code using ruff"
     cmds:
-      - uvx run ruff format .
+      - uv run ruff format .
 
   lint:
     desc: "Lint code using ruff"
     cmds:
-      - uvx run ruff check .
+      - uv run ruff check .
 
   test:
     desc: "Run tests using pytest"
     cmds:
-      - uvx run pytest tests
+      - uv run pytest tests
+
+  check-all:
+    desc: "Check all code using ruff"
+    cmds:
+      - task fmt
+      - task lint
+      - task test
