@@ -33,6 +33,11 @@ tasks:
     cmds:
       - uv run ruff check .
 
+  ty:
+    desc: "Type check code using ty"
+    cmds:
+      - uv run ty check .
+
   test:
     desc: "Run tests using pytest"
     cmds:
@@ -44,3 +49,4 @@ tasks:
       - task fmt
       - task lint
       - task test
+      - task ty
