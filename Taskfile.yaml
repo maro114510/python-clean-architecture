@@ -10,7 +10,16 @@ tasks:
       - task -l --sort none
 
   run:
-    desc: "Run the application"
+    desc: "Run the application in development mode with hot reload"
+    env:
+      ENV: development
+    cmds:
+      -  uv run python main.py
+
+  run:prod:
+    desc: "Run the application in production mode"
+    env:
+      ENV: production
     cmds:
       -  uv run python main.py
 
