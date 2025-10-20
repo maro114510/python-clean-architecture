@@ -21,10 +21,27 @@ def create_app() -> FastAPI:
     return app
 
 
+# Create app at module level for import string reference in uvicorn
+app = create_app()
+
+
 def main():
     """Main entry point for running the FastAPI server."""
-    app = create_app()
-    uvicorn.run(app, host="localhost", port=8000)
+    # Get application config from DI container
+    container = Container()
+    app_config = container.app_config()
+
+    # Get server configuration
+    server_config = app_config.get_server_config()
+
+    # When reload is enabled, uvicorn requires an import string instead of app object
+    if server_config.get("reload", False):
+        server_config_for_uvicorn = {
+            k: v for k, v in server_config.items() if v is not None
+        }
+        uvicorn.run("main:app", **server_config_for_uvicorn)
+    else:
+        uvicorn.run(app, **server_config)
 
 
 if __name__ == "__main__":
