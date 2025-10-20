@@ -9,44 +9,59 @@ router = APIRouter()
 
 @router.get("/item", response_model=list[ItemResponse])
 @inject
-def list_items(usecase: ItemUsecase = Depends(Provide[Container.item_usecase])):
-    items = usecase.get_items()
-    return items
+async def list_items(usecase: ItemUsecase = Depends(Provide[Container.item_usecase])):
+    try:
+        items = await usecase.get_items()
+        return items
+    except Exception as e:
+        raise e
 
 
 @router.get("/item/{item_id}", response_model=ItemResponse)
 @inject
-def get_item(
+async def get_item(
     item_id: int, usecase: ItemUsecase = Depends(Provide[Container.item_usecase])
 ):
-    item = usecase.get_item(item_id)
-    return item
+    try:
+        item = await usecase.get_item(item_id)
+        return item
+    except Exception as e:
+        raise e
 
 
 @router.post("/item", response_model=None, status_code=201)
 @inject
-def create_item(
+async def create_item(
     item: ItemRequest, usecase: ItemUsecase = Depends(Provide[Container.item_usecase])
 ):
-    usecase.create_item(item)
-    return None
+    try:
+        await usecase.create_item(item)
+        return None
+    except Exception as e:
+        raise e
 
 
 @router.put("/item/{item_id}", response_model=None, status_code=204)
 @inject
-def update_item(
+async def update_item(
     item_id: int,
     item: ItemRequest,
     usecase: ItemUsecase = Depends(Provide[Container.item_usecase]),
 ):
-    usecase.update_item(item_id, item)
-    return None
+    try:
+        await usecase.update_item(item_id, item)
+        return None
+    except Exception as e:
+        raise e
 
 
 @router.delete("/item/{item_id}", response_model=None, status_code=204)
 @inject
-def delete_item(
+async def delete_item(
     item_id: int, usecase: ItemUsecase = Depends(Provide[Container.item_usecase])
 ):
-    usecase.delete_item(item_id)
-    return None
+    try:
+        await usecase.delete_item(item_id)
+        return None
+    except Exception as e:
+        raise e

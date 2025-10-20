@@ -1,25 +1,32 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 from app.model.item import ItemModel
+from app.datastore.database.connection_protocol import ConnectionProtocol
 
 
 class ItemRepository(ABC):
     @abstractmethod
-    def get_items(self) -> List[ItemModel]:
+    async def get_items(self, connection: ConnectionProtocol) -> List[ItemModel]:
         pass
 
     @abstractmethod
-    def get_item(self, item_id: int) -> ItemModel:
+    async def get_item(
+        self, item_id: int, connection: ConnectionProtocol
+    ) -> Optional[ItemModel]:
         pass
 
     @abstractmethod
-    def create_item(self, item: ItemModel):
+    async def create_item(
+        self, item: ItemModel, connection: ConnectionProtocol
+    ) -> None:
         pass
 
     @abstractmethod
-    def update_item(self, item_id: int, item: ItemModel):
+    async def update_item(
+        self, item_id: int, item: ItemModel, connection: ConnectionProtocol
+    ) -> None:
         pass
 
     @abstractmethod
-    def delete_item(self, item_id: int):
+    async def delete_item(self, item_id: int, connection: ConnectionProtocol) -> None:
         pass
