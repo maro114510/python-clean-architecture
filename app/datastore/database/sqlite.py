@@ -18,7 +18,4 @@ class SQLiteConnection(DatabaseConnection):
             self._connection = None
 
     def get_connection_info(self) -> Dict[str, Any]:
-        return {
-            "type": "sqlite",
-            "db_path": self.db_path
-        }
+        return {"type": "sqlite", "db_path": self.db_path}

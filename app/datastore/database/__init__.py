@@ -1,4 +1,3 @@
-from typing import Optional
 from app.config.database_config import DatabaseConfig
 from .base import DatabaseConnection
 from .sqlite import SQLiteConnection
@@ -22,13 +21,13 @@ class DatabaseFactory:
                 port=config.mysql_port,
                 user=config.mysql_user,
                 password=config.mysql_password,
-                database=config.mysql_database
+                database=config.mysql_database,
             )
 
         elif config.db_type == config.FIRESTORE:
             return FirestoreConnection(
                 project_id=config.firestore_project_id,
-                credentials_path=config.firestore_credentials_path
+                credentials_path=config.firestore_credentials_path,
             )
 
         else:
