@@ -35,7 +35,6 @@ async def db_connection(db_config: DatabaseConfig):
     TransactionManagers for test transactions.
     """
     connection = DatabaseFactory.create_connection(db_config)
-    db_conn = await connection.connect()
     try:
         yield connection
     finally:
@@ -91,14 +90,14 @@ async def setup_test_db(db_config: DatabaseConfig, db_connection):
             await transaction_manager.execute("TRUNCATE TABLE item")
         # Note: Firestore requires different cleanup logic (not implemented here)
         await transaction_manager.commit()
-    except Exception as e:
+    except Exception:
         await transaction_manager.rollback()
         # Don't raise during cleanup to avoid masking test failures
 
 
 @async_fixture(scope="function")
 async def test_transaction(
-    db_config: DatabaseConfig, db_connection
+    db_config: DatabaseConfig, db_connection, setup_test_db
 ) -> AsyncGenerator:
     """Provide a transaction for each test function.
 
@@ -110,6 +109,7 @@ async def test_transaction(
             result = await test_transaction.execute(sql, params)
             # Automatically rolled back after test
     """
+    setup_test_db  # ensure schema fixture runs before starting the transaction
     transaction_manager = TransactionManagerFactory.create_manager(
         db_connection, db_config
     )

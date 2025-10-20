@@ -9,12 +9,17 @@ class SQLiteConnection(DatabaseConnection):
         self._connection = None
 
     async def connect(self):
-        self._connection = await aiosqlite.connect(self.db_path)
+        if self._connection is None:
+            self._connection = await aiosqlite.connect(self.db_path)
         return self._connection
 
     async def disconnect(self):
         if self._connection:
             await self._connection.close()
+            # aiosqlite closes connections asynchronously; if supported, wait for the worker thread
+            wait_closed = getattr(self._connection, "wait_closed", None)
+            if callable(wait_closed):
+                await wait_closed()
             self._connection = None
 
     def get_connection_info(self) -> Dict[str, Any]:

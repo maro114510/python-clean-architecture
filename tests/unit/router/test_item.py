@@ -1,390 +1,124 @@
-"""
-Unit tests for ItemRouter layer (API endpoints).
+"""Unit tests for the item router.
 
-Tests the FastAPI router layer with mocked usecase dependencies.
-This layer handles HTTP request/response handling.
-
-Test Strategy:
-- Mock ItemUsecase
-- Test each endpoint independently
-- Test request validation and response formatting
-- Test error handling and HTTP status codes
+These tests verify that the FastAPI router resolves dependencies via the
+`Container` just like the interactor layer, allowing us to inject a mocked
+use case and exercise the HTTP endpoints end-to-end.
 """
+
+from http import HTTPStatus
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi.testclient import TestClient
+from dependency_injector import providers
 from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
-from app.router.item import router
+from app.container import Container
+from app.interactor.item import ItemInteractor
 from app.model.item import ItemModel
-from app.schema.item import ItemRequest, ItemResponse
+from app.router.item import router
+from app.schema.item import ItemRequest
 
 
 pytestmark = pytest.mark.unit
 
 
 @pytest.fixture
-def app():
-    """Create a FastAPI app with the item router."""
-    app = FastAPI()
-    app.include_router(router)
-    return app
+def mock_usecase(mocker):
+    """Provide an ItemUsecase-like mock with async endpoints."""
 
-
-@pytest.fixture
-def client(app):
-    """Create a TestClient for the FastAPI app."""
-    return TestClient(app)
-
-
-@pytest.fixture
-def mock_usecase():
-    """Create a mock ItemUsecase."""
-    mock = AsyncMock()
-    mock.get_items = AsyncMock(return_value=[])
-    mock.get_item = AsyncMock(return_value=None)
-    mock.create_item = AsyncMock()
-    mock.update_item = AsyncMock()
-    mock.delete_item = AsyncMock()
+    mock = mocker.create_autospec(ItemInteractor, instance=True)
+    mock.get_items = mocker.AsyncMock(return_value=[])
+    mock.get_item = mocker.AsyncMock(return_value=None)
+    mock.create_item = mocker.AsyncMock()
+    mock.update_item = mocker.AsyncMock()
+    mock.delete_item = mocker.AsyncMock()
     return mock
 
 
-class TestItemRouterListItems:
-    """Test suite for GET /item endpoint."""
+@pytest.fixture
+def client(mock_usecase):
+    """Create a FastAPI TestClient with the router wired through the container."""
 
-    def test_list_items_success(self, mock_usecase):
-        """
-        Test successful retrieval of all items.
+    container = Container()
+    container.item_usecase.override(providers.Object(mock_usecase))
+    container.wire(modules=["app.router.item"])
 
-        Arrange:
-            - Create mock usecase that returns items
+    app = FastAPI()
+    app.include_router(router)
 
-        Act:
-            - Call GET /item
+    with TestClient(app, raise_server_exceptions=False) as test_client:
+        yield test_client
 
-        Assert:
-            - Returns 200 status
-            - Response contains list of items
-        """
-        # Note: Router testing with dependency_injector is complex.
-        # The remaining tests focus on schema and endpoint structure validation.
-        # For full integration testing, use e2e tests with actual DI setup.
+    container.unwire()
+    container.item_usecase.reset_override()
 
-    def test_list_items_returns_correct_structure(self):
-        """
-        Test that response has correct structure.
 
-        Arrange:
-            - Expected response structure
+class TestListItems:
+    def test_list_items_success(self, client, mock_usecase):
+        items = [
+            ItemModel(id=1, name="First", price=10.0),
+            ItemModel(id=2, name="Second", price=20.0),
+        ]
+        mock_usecase.get_items.return_value = items
 
-        Act:
-            - Verify ItemResponse schema
+        response = client.get("/item")
 
-        Assert:
-            - Response schema includes id, name, price
-        """
-        # Arrange
-        expected_fields = {"id", "name", "price"}
+        assert response.status_code == HTTPStatus.OK
+        assert response.json() == [item.model_dump(by_alias=True) for item in items]
+        mock_usecase.get_items.assert_awaited_once()
 
-        # Verify schema
-        assert expected_fields.issubset(ItemResponse.model_fields.keys())
+    def test_list_items_error_returns_500(self, client, mock_usecase):
+        mock_usecase.get_items.side_effect = RuntimeError("boom")
 
-    def test_list_items_error_handling(self):
-        """
-        Test error handling when usecase fails.
+        response = client.get("/item")
 
-        Arrange:
-            - Mock usecase raises exception
+        assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+        mock_usecase.get_items.assert_awaited_once()
 
-        Act:
-            - Call GET /item
 
-        Assert:
-            - Exception is raised/handled appropriately
-        """
-        # This test demonstrates error handling pattern
-        # Actual implementation would depend on error handling middleware
+class TestGetItem:
+    def test_get_item_success(self, client, mock_usecase):
+        item = ItemModel(id=1, name="Single", price=99.99)
+        mock_usecase.get_item.return_value = item
 
+        response = client.get("/item/1")
 
-class TestItemRouterGetItem:
-    """Test suite for GET /item/{item_id} endpoint."""
+        assert response.status_code == HTTPStatus.OK
+        assert response.json() == item.model_dump(by_alias=True)
+        mock_usecase.get_item.assert_awaited_once_with(1)
 
-    def test_get_item_validates_id_parameter(self):
-        """
-        Test that item ID parameter is properly validated.
+    def test_get_item_error_returns_500(self, client, mock_usecase):
+        mock_usecase.get_item.side_effect = LookupError("missing")
 
-        Arrange:
-            - Item ID parameter
+        response = client.get("/item/1")
 
-        Act:
-            - Verify type hints
+        assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+        mock_usecase.get_item.assert_awaited_once_with(1)
 
-        Assert:
-            - ID is integer type
-        """
-        # Verify the endpoint signature expects integer
-        import inspect
-        from app.router.item import get_item
 
-        sig = inspect.signature(get_item)
-        assert sig.parameters["item_id"].annotation == int
+class TestCreateItem:
+    def test_create_item_success(self, client, mock_usecase):
+        payload = {"name": "Created", "price": 123.45}
 
-    def test_get_item_success_response_model(self):
-        """
-        Test that successful response uses ItemResponse model.
+        response = client.post("/item", json=payload)
 
-        Arrange:
-            - Expected response model
+        assert response.status_code == HTTPStatus.CREATED
+        mock_usecase.create_item.assert_awaited_once_with(ItemRequest(**payload))
 
-        Act:
-            - Verify decorator
 
-        Assert:
-            - response_model is ItemResponse
-        """
-        # Verify the endpoint uses ItemResponse
-        from app.router.item import get_item
+class TestUpdateItem:
+    def test_update_item_success(self, client, mock_usecase):
+        payload = {"name": "Updated", "price": 555.0}
 
-        # Check decorator or annotation
-        assert hasattr(get_item, "__annotations__")
+        response = client.put("/item/5", json=payload)
 
+        assert response.status_code == HTTPStatus.NO_CONTENT
+        mock_usecase.update_item.assert_awaited_once_with(5, ItemRequest(**payload))
 
-class TestItemRouterCreateItem:
-    """Test suite for POST /item endpoint."""
 
-    def test_create_item_request_validation(self):
-        """
-        Test that request body is validated with ItemRequest.
+class TestDeleteItem:
+    def test_delete_item_success(self, client, mock_usecase):
+        response = client.delete("/item/9")
 
-        Arrange:
-            - ItemRequest schema
-
-        Act:
-            - Verify schema fields
-
-        Assert:
-            - Schema requires name and price
-        """
-        # Arrange
-        required_fields = {"name", "price"}
-
-        # Assert
-        assert required_fields.issubset(ItemRequest.model_fields.keys())
-
-    def test_create_item_returns_201_status(self):
-        """
-        Test that create endpoint returns 201 Created.
-
-        Arrange:
-            - Create endpoint
-
-        Act:
-            - Verify status code
-
-        Assert:
-            - Status code is 201
-        """
-        # This demonstrates the pattern
-        from app.router.item import create_item
-        import inspect
-
-        source = inspect.getsource(create_item)
-        assert "201" in source or "status_code=201" in source
-
-    def test_create_item_accepts_item_request(self):
-        """
-        Test that create endpoint accepts ItemRequest.
-
-        Arrange:
-            - Endpoint signature
-
-        Act:
-            - Verify parameter types
-
-        Assert:
-            - Has item parameter of ItemRequest type
-        """
-        # Verify signature
-        from app.router.item import create_item
-        import inspect
-
-        sig = inspect.signature(create_item)
-        assert "item" in sig.parameters
-
-
-class TestItemRouterUpdateItem:
-    """Test suite for PUT /item/{item_id} endpoint."""
-
-    def test_update_item_requires_id_and_body(self):
-        """
-        Test that update requires both ID and request body.
-
-        Arrange:
-            - Update endpoint
-
-        Act:
-            - Verify parameters
-
-        Assert:
-            - Has item_id and item parameters
-        """
-        # Verify parameters
-        from app.router.item import update_item
-        import inspect
-
-        sig = inspect.signature(update_item)
-        assert "item_id" in sig.parameters
-        assert "item" in sig.parameters
-
-    def test_update_item_returns_204_status(self):
-        """
-        Test that update endpoint returns 204 No Content.
-
-        Arrange:
-            - Update endpoint
-
-        Act:
-            - Verify status code
-
-        Assert:
-            - Status code is 204
-        """
-        # Verify status code
-        from app.router.item import update_item
-        import inspect
-
-        source = inspect.getsource(update_item)
-        assert "204" in source
-
-
-class TestItemRouterDeleteItem:
-    """Test suite for DELETE /item/{item_id} endpoint."""
-
-    def test_delete_item_requires_id(self):
-        """
-        Test that delete requires ID parameter.
-
-        Arrange:
-            - Delete endpoint
-
-        Act:
-            - Verify parameters
-
-        Assert:
-            - Has item_id parameter
-        """
-        # Verify parameter
-        from app.router.item import delete_item
-        import inspect
-
-        sig = inspect.signature(delete_item)
-        assert "item_id" in sig.parameters
-
-    def test_delete_item_returns_204_status(self):
-        """
-        Test that delete endpoint returns 204 No Content.
-
-        Arrange:
-            - Delete endpoint
-
-        Act:
-            - Verify status code
-
-        Assert:
-            - Status code is 204
-        """
-        # Verify status code
-        from app.router.item import delete_item
-        import inspect
-
-        source = inspect.getsource(delete_item)
-        assert "204" in source
-
-
-class TestItemRouterErrorHandling:
-    """Test suite for error handling in router layer."""
-
-    def test_all_endpoints_have_error_handling(self):
-        """
-        Test that all endpoints have try-except blocks.
-
-        Arrange:
-            - Router module
-
-        Act:
-            - Verify error handling
-
-        Assert:
-            - All endpoints have exception handling
-        """
-        # Verify error handling exists
-        from app.router.item import (
-            list_items,
-            get_item,
-            create_item,
-            update_item,
-            delete_item,
-        )
-        import inspect
-
-        endpoints = [list_items, get_item, create_item, update_item, delete_item]
-
-        for endpoint in endpoints:
-            source = inspect.getsource(endpoint)
-            assert "try" in source and "except" in source
-
-
-class TestItemRouterDependencyInjection:
-    """Test suite for DI integration in router."""
-
-    def test_list_items_uses_di_injection(self):
-        """
-        Test that list_items uses dependency injection.
-
-        Arrange:
-            - list_items endpoint
-
-        Act:
-            - Verify @inject decorator
-
-        Assert:
-            - Has @inject decorator
-            - Uses Depends()
-        """
-        # Verify DI usage
-        from app.router.item import list_items
-        import inspect
-
-        source = inspect.getsource(list_items)
-        assert "@inject" in source
-        assert "Depends" in source
-
-    def test_all_endpoints_use_container_dependency(self):
-        """
-        Test that all endpoints use Container dependency.
-
-        Arrange:
-            - Router endpoints
-
-        Act:
-            - Verify Container usage
-
-        Assert:
-            - All endpoints reference Container.item_usecase
-        """
-        # Verify Container usage
-        from app.router.item import (
-            list_items,
-            get_item,
-            create_item,
-            update_item,
-            delete_item,
-        )
-        import inspect
-
-        endpoints = [list_items, get_item, create_item, update_item, delete_item]
-
-        for endpoint in endpoints:
-            source = inspect.getsource(endpoint)
-            assert "Container.item_usecase" in source
+        assert response.status_code == HTTPStatus.NO_CONTENT
+        mock_usecase.delete_item.assert_awaited_once_with(9)
