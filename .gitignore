@@ -8,6 +8,7 @@
 # *.png
 # *.mp4
 # *.json
+*.sqlite3
 
 ### Python ###
 **/__pycache__/**

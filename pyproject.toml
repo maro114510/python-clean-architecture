@@ -8,6 +8,9 @@ dependencies = [
     "fastapi[standard]>=0.119.0",
     "humps>=0.2.2",
     "dependency-injector>=4.41.0",
+    "aiosqlite>=0.21.0",
+    "aiomysql>=0.2.0",
+    "google-cloud-firestore>=2.0.0",
 ]
 
 [project.optional-dependencies]
