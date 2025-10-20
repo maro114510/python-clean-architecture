@@ -57,7 +57,7 @@ class ItemInteractor(ItemUsecase):
         """Delete an item by ID"""
         try:
             await self.transaction_manager.begin()
-            await self._delete_item_internal(item_id)
+            await self.repo.delete_item(item_id, self.transaction_manager)
             await self.transaction_manager.commit()
         except Exception:
             await self.transaction_manager.rollback()
