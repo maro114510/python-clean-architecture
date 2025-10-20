@@ -1,0 +1,24 @@
+import aiosqlite
+from typing import Dict, Any
+from .base import DatabaseConnection
+
+
+class SQLiteConnection(DatabaseConnection):
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+        self._connection = None
+
+    async def connect(self):
+        self._connection = await aiosqlite.connect(self.db_path)
+        return self._connection
+
+    async def disconnect(self):
+        if self._connection:
+            await self._connection.close()
+            self._connection = None
+
+    def get_connection_info(self) -> Dict[str, Any]:
+        return {
+            "type": "sqlite",
+            "db_path": self.db_path
+        }
