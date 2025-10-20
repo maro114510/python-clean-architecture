@@ -1,0 +1,30 @@
+version: "3"
+
+# Ref.
+# - https://taskfile.dev/
+
+tasks:
+  default:
+    desc: "List all tasks"
+    cmds:
+      - task -l --sort none
+
+  run:
+    desc: "Run the application"
+    cmds:
+      -  uv run fastapi dev main.py
+
+  fmt:
+    desc: "Format code using black"
+    cmds:
+      - uvx run ruff format .
+
+  lint:
+    desc: "Lint code using ruff"
+    cmds:
+      - uvx run ruff check .
+
+  test:
+    desc: "Run tests using pytest"
+    cmds:
+      - uvx run pytest tests
