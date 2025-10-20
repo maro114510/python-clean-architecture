@@ -44,10 +44,16 @@ class DatabaseConfig:
 
         elif db_type == cls.MYSQL:
             config.mysql_host = os.getenv("MYSQL_HOST", cls.DEFAULT_MYSQL_HOST)
-            config.mysql_port = int(os.getenv("MYSQL_PORT", str(cls.DEFAULT_MYSQL_PORT)))
+            config.mysql_port = int(
+                os.getenv("MYSQL_PORT", str(cls.DEFAULT_MYSQL_PORT))
+            )
             config.mysql_user = os.getenv("MYSQL_USER", cls.DEFAULT_MYSQL_USER)
-            config.mysql_password = os.getenv("MYSQL_PASSWORD", cls.DEFAULT_MYSQL_PASSWORD)
-            config.mysql_database = os.getenv("MYSQL_DATABASE", cls.DEFAULT_MYSQL_DATABASE)
+            config.mysql_password = os.getenv(
+                "MYSQL_PASSWORD", cls.DEFAULT_MYSQL_PASSWORD
+            )
+            config.mysql_database = os.getenv(
+                "MYSQL_DATABASE", cls.DEFAULT_MYSQL_DATABASE
+            )
 
         elif db_type == cls.FIRESTORE:
             config.firestore_project_id = os.getenv("FIRESTORE_PROJECT_ID")
